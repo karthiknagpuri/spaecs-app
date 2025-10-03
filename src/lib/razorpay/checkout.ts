@@ -1,4 +1,4 @@
-import { razorpay } from './client';
+import { getRazorpay } from './client';
 
 export interface CheckoutParams {
   creatorId: string;
@@ -18,6 +18,7 @@ export async function createPaymentOrder({
   currency = 'INR'
 }: CheckoutParams) {
   try {
+    const razorpay = getRazorpay();
     // Create order for one-time payments
     if (type !== 'subscription') {
       const order = await razorpay.orders.create({

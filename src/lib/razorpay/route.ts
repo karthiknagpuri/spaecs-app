@@ -1,4 +1,4 @@
-import { razorpay } from './client';
+import { getRazorpay } from './client';
 
 // Razorpay Route (X) for marketplace transfers and creator payouts
 
@@ -20,6 +20,7 @@ export async function createLinkedAccount({
   businessType = 'individual'
 }: CreateAccountParams) {
   try {
+    const razorpay = getRazorpay();
     // Create a linked account for the creator
     const account = await razorpay.accounts.create({
       email,
@@ -60,6 +61,7 @@ export async function transferToCreator({
   currency = 'INR'
 }: TransferParams) {
   try {
+    const razorpay = getRazorpay();
     // Create a transfer to the linked account
     const transfer = await razorpay.transfers.create({
       account: accountId,
@@ -88,6 +90,7 @@ export async function transferToCreator({
 
 export async function getAccountBalance(accountId: string) {
   try {
+    const razorpay = getRazorpay();
     const balance = await razorpay.accounts.fetch(accountId);
 
     return {
@@ -106,6 +109,7 @@ export async function getAccountBalance(accountId: string) {
 
 export async function createPayout(accountId: string, amount: number) {
   try {
+    const razorpay = getRazorpay();
     const payout = await razorpay.payouts.create({
       account_number: accountId,
       amount: amount * 100,
