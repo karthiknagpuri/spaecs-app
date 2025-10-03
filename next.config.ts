@@ -7,6 +7,16 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    serverComponentsExternalPackages: ['razorpay'],
+  },
+  webpack: (config) => {
+    config.externals = config.externals || [];
+    config.externals.push({
+      razorpay: 'razorpay'
+    });
+    return config;
+  },
   images: {
     remotePatterns: [
       {
