@@ -18,7 +18,7 @@ export const getRazorpay = () => {
 
 // Client-side config
 export const razorpayConfig = {
-  key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+  key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '',
   currency: 'INR',
   name: 'Spaecs',
   description: 'Support your favorite creators',
