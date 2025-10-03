@@ -209,7 +209,18 @@ export default function ProfilePage() {
 
       if (data.profile) {
         setProfile(data.profile);
-        setTempProfile(data.profile);
+        // Merge existing profile data with defaults, preserving all existing fields
+        setTempProfile(prev => ({
+          ...prev,
+          ...data.profile,
+          social_links: {
+            ...prev.social_links,
+            ...data.profile.social_links
+          },
+          tier_configs: data.profile.tier_configs && data.profile.tier_configs.length > 0
+            ? data.profile.tier_configs
+            : prev.tier_configs
+        }));
       } else {
         const suggestedUsername = user.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9_-]/g, '') || '';
         setTempProfile(prev => ({

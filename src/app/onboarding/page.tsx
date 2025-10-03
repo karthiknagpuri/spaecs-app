@@ -42,14 +42,19 @@ export default function OnboardingPage() {
       // Check if user already has a profile
       const { data: profile } = await supabase
         .from('creator_pages')
-        .select('slug')
+        .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (profile) {
         // User already has a profile, redirect to dashboard
         router.push('/dashboard');
+        return;
       }
+
+      // Auto-populate from user data if no profile exists
+      const suggestedUsername = user.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9_-]/g, '') || '';
+      setUsername(suggestedUsername);
     } catch (error) {
       console.error('Error checking auth:', error);
     }
