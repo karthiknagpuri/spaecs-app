@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { logError, logSecurity } from '@/lib/logger'
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -9,7 +10,7 @@ export async function middleware(request: NextRequest) {
 
   // Validate environment variables
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    console.error('Missing Supabase environment variables')
+    logError('Missing Supabase environment variables');
     return supabaseResponse
   }
 
@@ -49,9 +50,20 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/', request.url))
     }
   } catch (error) {
-    // Silently handle auth errors to prevent console spam
-    // User will be treated as not authenticated
-    console.error('Middleware auth error:', error instanceof Error ? error.message : 'Unknown error')
+    // SECURITY: Proper error handling with logging and safe defaults
+    logError('Middleware auth error', error, {
+      path: request.nextUrl.pathname,
+    });
+
+    // For critical auth errors on protected routes, redirect to home
+    if (request.nextUrl.pathname.startsWith('/dashboard')) {
+      logSecurity('Auth error on protected route, redirecting to home', {
+        path: request.nextUrl.pathname,
+      });
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+
+    // For other routes, continue but user will be treated as unauthenticated
   }
 
   return supabaseResponse

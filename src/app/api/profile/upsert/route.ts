@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
+
+    // Create admin client for operations that might need to bypass RLS
+    const supabaseAdmin = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -40,10 +53,7 @@ export async function POST(request: NextRequest) {
       // Update existing profile
       const { data: updatedProfile, error: updateError } = await supabase
         .from("creator_pages")
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
+        .update(updates)
         .eq("user_id", user.id)
         .select()
         .single();
@@ -73,8 +83,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Create new profile
-      const { data: newProfile, error: createError } = await supabase
+      // Create new profile using admin client to bypass RLS
+      const { data: newProfile, error: createError } = await supabaseAdmin
         .from("creator_pages")
         .insert({
           user_id: user.id,
@@ -105,8 +115,7 @@ export async function POST(request: NextRequest) {
               benefits: ["All Fan benefits", "1-on-1 monthly call", "Custom requests", "Physical merchandise"]
             }
           ],
-          ...updates,
-          updated_at: new Date().toISOString()
+          ...updates
         })
         .select()
         .single();
@@ -171,8 +180,7 @@ export async function PATCH(request: NextRequest) {
 
     // Update single field
     const updateData: any = {
-      [field]: value,
-      updated_at: new Date().toISOString()
+      [field]: value
     };
 
     const query = profile_id

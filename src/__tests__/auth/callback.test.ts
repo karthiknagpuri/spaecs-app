@@ -15,15 +15,26 @@ jest.mock('next/server', () => ({
 }));
 
 // Mock Request globally
-global.Request = class Request {
+interface MockRequest extends Request {
+  url: string;
+}
+
+global.Request = class MockRequestClass {
   url: string;
   constructor(url: string) {
     this.url = url;
   }
-} as any;
+} as unknown as typeof Request;
+
+interface MockSupabaseClient {
+  auth: {
+    exchangeCodeForSession: jest.Mock;
+  };
+  from: jest.Mock;
+}
 
 describe('Auth Callback Route', () => {
-  let mockSupabase: any;
+  let mockSupabase: MockSupabaseClient;
   const mockOrigin = 'http://localhost:3000';
 
   beforeEach(() => {

@@ -23,21 +23,63 @@ export async function POST(request: NextRequest) {
     });
 
     const body = await request.json();
-    const { user_id, username, display_name, bio, social_links, support_tiers } = body;
+    const { user_id, username, display_name, bio, social_links, support_tiers, custom_links } = body;
 
-    // Check if profile already exists
-    const { data: existingProfile } = await supabaseAdmin
+    console.log('[Admin] user_id:', user_id, 'username:', username);
+
+    // Check if profile already exists for this user_id
+    const { data: existingProfileByUser, error: userCheckError } = await supabaseAdmin
       .from("creator_pages")
-      .select("id")
+      .select("*")
+      .eq("user_id", user_id)
+      .single();
+
+    console.log('[Admin] Profile by user_id found:', !!existingProfileByUser);
+    if (userCheckError && userCheckError.code !== 'PGRST116') {
+      console.error('[Admin] Error checking user:', userCheckError);
+    }
+
+    if (existingProfileByUser) {
+      // Profile already exists for this user - return it
+      console.log('[Admin] Returning existing profile for user');
+      return NextResponse.json({ profile: existingProfileByUser });
+    }
+
+    // Check if username/slug is taken
+    const { data: existingProfileBySlug, error: slugCheckError } = await supabaseAdmin
+      .from("creator_pages")
+      .select("*")
       .eq("slug", username)
       .single();
 
-    if (existingProfile) {
-      return NextResponse.json(
-        { error: "Username already taken" },
-        { status: 400 }
-      );
+    console.log('[Admin] Profile by slug found:', !!existingProfileBySlug);
+    if (slugCheckError && slugCheckError.code !== 'PGRST116') {
+      console.error('[Admin] Error checking slug:', slugCheckError);
     }
+
+    if (existingProfileBySlug) {
+      // Profile exists with this slug - update the user_id to fix orphaned profile
+      console.log('[Admin] Fixing orphaned profile - old user_id:', existingProfileBySlug.user_id, 'new user_id:', user_id);
+      const { data: updatedProfile, error: updateError } = await supabaseAdmin
+        .from("creator_pages")
+        .update({ user_id: user_id })
+        .eq("slug", username)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('[Admin] Error fixing profile:', updateError);
+        return NextResponse.json(
+          { error: "Failed to fix orphaned profile: " + updateError.message },
+          { status: 500 }
+        );
+      }
+
+      console.log('[Admin] Successfully updated profile. New user_id:', updatedProfile?.user_id);
+      return NextResponse.json({ profile: updatedProfile });
+    }
+
+    console.log('[Admin] No existing profile found, creating new one');
 
     // Create profile using service role (bypasses RLS)
     const { data: profile, error } = await supabaseAdmin
@@ -70,7 +112,8 @@ export async function POST(request: NextRequest) {
             description: "The ultimate fan experience",
             benefits: ["All Fan benefits", "1-on-1 monthly call", "Custom requests", "Physical merchandise"]
           }
-        ]
+        ],
+        custom_links: custom_links || []
       })
       .select()
       .single();

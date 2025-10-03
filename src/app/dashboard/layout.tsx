@@ -3,18 +3,15 @@
 import React, { useState, useEffect } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 import {
-  LayoutDashboard,
-  Users,
   Wallet,
-  Calendar,
   Settings,
   HelpCircle,
   LogOut,
   Home,
   TrendingUp,
-  Gift,
   UserCircle,
-  Heart
+  Heart,
+  FileText
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -76,17 +73,17 @@ export default function DashboardLayout({
       ),
     },
     {
+      label: "Posts",
+      href: "/dashboard/posts",
+      icon: (
+        <FileText className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+      ),
+    },
+    {
       label: "Analytics",
       href: "/dashboard/analytics",
       icon: (
         <TrendingUp className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Communities",
-      href: "/dashboard/communities",
-      icon: (
-        <Users className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
     },
     {
@@ -101,20 +98,6 @@ export default function DashboardLayout({
       href: "/dashboard/supporters",
       icon: (
         <Heart className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Virtual Gifts",
-      href: "/dashboard/gifts",
-      icon: (
-        <Gift className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Events",
-      href: "/dashboard/events",
-      icon: (
-        <Calendar className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
     },
     {

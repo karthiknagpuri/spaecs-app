@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
+
+    // Create service role client to bypass RLS for username checking
+    const supabaseAdmin = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
     const { searchParams } = new URL(request.url);
     const username = searchParams.get("username");
 
@@ -38,15 +51,22 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Check if username (slug) is already taken
-    const { data: existingProfile } = await supabase
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Check if username (slug) is already taken using service role to bypass RLS
+    const { data: existingProfile } = await supabaseAdmin
       .from("creator_pages")
-      .select("id")
+      .select("id, user_id")
       .eq("slug", username.toLowerCase())
-      .single();
+      .maybeSingle();
+
+    // For claiming modal: Username is available only if no one has it
+    // (We're not checking for updates, just new claims)
+    const available = !existingProfile;
 
     return NextResponse.json({
-      available: !existingProfile,
+      available,
       username: username.toLowerCase()
     });
   } catch (error: any) {

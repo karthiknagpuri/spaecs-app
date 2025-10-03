@@ -27,13 +27,22 @@ export default function RootLayout({
   const supabase = createClient();
 
   useEffect(() => {
-    // Check if on dashboard or onboarding to hide navigation
+    // Check if on dashboard, onboarding, or public creator page to hide navigation
     const checkNavVisibility = () => {
       const isDashboard = pathname?.startsWith('/dashboard');
       const isOnboarding = pathname?.startsWith('/onboarding');
 
-      // Show navigation on all pages except dashboard and onboarding
-      setShowNavigation(!isDashboard && !isOnboarding);
+      // Check if it's a public creator page (dynamic route like /username)
+      // Exclude root path and common static routes
+      const isPublicCreatorPage = pathname &&
+        pathname !== '/' &&
+        !pathname.startsWith('/auth') &&
+        !pathname.startsWith('/api') &&
+        !isDashboard &&
+        !isOnboarding;
+
+      // Show navigation only on landing page and auth pages
+      setShowNavigation(!isDashboard && !isOnboarding && !isPublicCreatorPage);
     };
 
     checkNavVisibility();

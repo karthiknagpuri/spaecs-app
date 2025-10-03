@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { X } from "lucide-react";
 
@@ -14,6 +14,64 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [error, setError] = useState<string | null>(null);
 
   const supabase = createClient();
+
+  // Keyboard support - Escape to close & Focus trap
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen && !loading) {
+        onClose();
+      }
+    };
+
+    const handleTabKey = (e: KeyboardEvent) => {
+      if (!isOpen || e.key !== 'Tab') return;
+
+      const focusableElements = document.querySelectorAll(
+        'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const modalElements = Array.from(focusableElements).filter(
+        el => document.querySelector('[role="dialog"]')?.contains(el)
+      );
+
+      if (modalElements.length === 0) return;
+
+      const firstElement = modalElements[0] as HTMLElement;
+      const lastElement = modalElements[modalElements.length - 1] as HTMLElement;
+
+      if (e.shiftKey) {
+        // Shift + Tab
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement.focus();
+        }
+      } else {
+        // Tab
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement.focus();
+        }
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.addEventListener('keydown', handleTabKey);
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+
+      // Auto-focus the close button on open
+      setTimeout(() => {
+        const closeButton = document.querySelector('[aria-label="Close authentication modal"]') as HTMLElement;
+        closeButton?.focus();
+      }, 100);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('keydown', handleTabKey);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose, loading]);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -44,31 +102,36 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
       onClick={onClose}
+      role="presentation"
     >
       <div
         className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        aria-describedby="modal-description"
       >
         {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-5 right-5 p-2 rounded-full hover:bg-gray-100 transition-all duration-200 z-10 min-h-[44px] min-w-[44px] flex items-center justify-center group"
-          aria-label="Close"
+          aria-label="Close authentication modal"
         >
           <X className="w-5 h-5 text-gray-600 group-hover:text-gray-900 transition-colors" />
         </button>
 
-        {/* Gradient background decoration */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 opacity-60"></div>
+        {/* Background decoration */}
+        <div className="absolute inset-0 bg-gray-50"></div>
 
         {/* Content */}
         <div className="relative p-8 sm:p-12">
           {/* Heading */}
           <div className="text-center mb-8">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 tracking-tight">
+            <h2 id="modal-title" className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 tracking-tight">
               Welcome to Spaecs
             </h2>
-            <p className="text-gray-600 text-base sm:text-lg">
+            <p id="modal-description" className="text-gray-600 text-base sm:text-lg">
               Build your community, monetize your passion
             </p>
           </div>
@@ -84,10 +147,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <button
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="relative w-full group"
+            className="w-full bg-white border-2 border-gray-200 hover:border-gray-300 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 min-h-[64px] flex items-center justify-center gap-4 px-6 py-4"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl blur-lg opacity-20 group-hover:opacity-30 transition-opacity duration-300"></div>
-            <div className="relative w-full bg-white border-2 border-gray-200 hover:border-gray-300 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 min-h-[64px] flex items-center justify-center gap-4 px-6 py-4">
               {loading ? (
                 <div className="flex items-center gap-3">
                   <div className="w-6 h-6 border-3 border-gray-300 border-t-indigo-600 rounded-full animate-spin"></div>
@@ -116,7 +177,6 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   <span className="text-gray-900 font-semibold text-lg">Continue with Google</span>
                 </>
               )}
-            </div>
           </button>
 
           {/* Footer text */}

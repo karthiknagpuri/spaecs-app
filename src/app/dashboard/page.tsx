@@ -8,20 +8,24 @@ import {
   TrendingUp,
   Users,
   DollarSign,
-  Activity,
-  ArrowUp,
-  Gift,
-  Calendar,
+  Heart,
+  ArrowUpRight,
+  Handshake,
   UserCircle,
-  Settings,
   BarChart3,
+  MessageSquare,
+  Eye,
+  ChevronRight,
 } from "lucide-react";
+import { ClaimUsernameModal } from "@/components/dashboard/ClaimUsernameModal";
+import { motion } from "framer-motion";
 
 interface DashboardStats {
   followers: number;
   revenue: number;
-  events: number;
-  gifts: number;
+  supporters: number;
+  pageViews: number;
+  engagement: number;
 }
 
 export default function DashboardPage() {
@@ -29,45 +33,98 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
     followers: 0,
     revenue: 0,
-    events: 0,
-    gifts: 0,
+    supporters: 0,
+    pageViews: 0,
+    engagement: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showClaimUsername, setShowClaimUsername] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   useEffect(() => {
+    let mounted = true;
+
     const loadDashboard = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      try {
+        const supabase = createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.push('/');
-        return;
+        if (authError) throw authError;
+
+        if (!user) {
+          router.push('/');
+          return;
+        }
+
+        if (!mounted) return;
+        setUser(user);
+
+        const hasClaimedUsername = localStorage.getItem(`username_claimed_${user.id}`);
+        const { data: profile } = await supabase
+          .from('creator_pages')
+          .select('slug')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!mounted) return;
+
+        if ((!profile || !profile.slug) && !hasClaimedUsername) {
+          setShowClaimUsername(true);
+        } else {
+          setShowClaimUsername(false);
+          if (profile && profile.slug) {
+            localStorage.setItem(`username_claimed_${user.id}`, 'true');
+          }
+        }
+
+        // TODO: Load real stats from database
+        setStats({
+          followers: 0,
+          revenue: 0,
+          supporters: 0,
+          pageViews: 0,
+          engagement: 0,
+        });
+
+        setLoading(false);
+      } catch (err: any) {
+        if (mounted) {
+          setError(err.message || 'Failed to load dashboard');
+          setLoading(false);
+        }
       }
-
-      setUser(user);
-
-      // TODO: Load real stats from database
-      // For now, using placeholder data
-      setStats({
-        followers: 0,
-        revenue: 0,
-        events: 0,
-        gifts: 0,
-      });
-
-      setLoading(false);
     };
 
     loadDashboard();
-  }, [router, supabase]);
+
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="flex items-center justify-center min-h-screen bg-white dark:bg-black">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-600 font-medium">Loading dashboard...</p>
+          <div className="w-10 h-10 border-2 border-gray-900 dark:border-white border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white dark:bg-black">
+        <div className="text-center max-w-md px-4">
+          <p className="text-sm text-red-600 dark:text-red-400 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-sm font-medium rounded-md hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -77,185 +134,243 @@ export default function DashboardPage() {
     return null;
   }
 
-  const statCards = [
+  const hasAnyData = stats.followers > 0 || stats.revenue > 0 || stats.supporters > 0;
+
+  const primaryMetrics = [
     {
-      title: "Followers",
-      value: stats.followers.toLocaleString(),
-      change: "+0%",
-      icon: Users,
-      color: "from-blue-500 to-cyan-500",
-    },
-    {
-      title: "Revenue",
-      value: `₹${stats.revenue.toLocaleString()}`,
-      change: "+0%",
+      label: "Earnings",
+      value: stats.revenue > 0 ? `₹${stats.revenue.toLocaleString()}` : "—",
+      subtext: "this month",
       icon: DollarSign,
-      color: "from-emerald-500 to-teal-500",
+      trend: stats.revenue > 0 ? "+0%" : null,
+      href: "/dashboard/analytics?tab=revenue",
     },
     {
-      title: "Events",
-      value: stats.events.toLocaleString(),
-      change: "+0%",
-      icon: Calendar,
-      color: "from-purple-500 to-pink-500",
+      label: "Members",
+      value: stats.supporters > 0 ? stats.supporters.toLocaleString() : "—",
+      subtext: "active supporters",
+      icon: Heart,
+      trend: stats.supporters > 0 ? "+0%" : null,
+      href: "/dashboard/supporters",
+    },
+  ];
+
+  const secondaryMetrics = [
+    {
+      label: "Followers",
+      value: stats.followers > 0 ? stats.followers.toLocaleString() : "—",
+      icon: Users,
+      href: "/dashboard/analytics?tab=audience",
     },
     {
-      title: "Gifts",
-      value: stats.gifts.toLocaleString(),
-      change: "+0%",
-      icon: Gift,
-      color: "from-orange-500 to-red-500",
+      label: "Views",
+      value: stats.pageViews > 0 ? stats.pageViews.toLocaleString() : "—",
+      icon: Eye,
+      href: "/dashboard/analytics?tab=traffic",
+    },
+    {
+      label: "Engagement",
+      value: stats.engagement > 0 ? `${stats.engagement}%` : "—",
+      icon: TrendingUp,
+      href: "/dashboard/analytics?tab=engagement",
     },
   ];
 
   const quickActions = [
     {
-      title: "Create Event",
-      description: "Schedule a new event for your community",
-      icon: Calendar,
-      href: "/dashboard/events",
-      color: "bg-purple-500",
+      title: "Manage collaborations",
+      icon: Handshake,
+      href: "/dashboard/collaborations",
     },
     {
-      title: "View Analytics",
-      description: "See detailed insights and metrics",
-      icon: BarChart3,
-      href: "/dashboard/analytics",
-      color: "bg-blue-500",
+      title: "Create a post",
+      icon: MessageSquare,
+      href: "/dashboard/posts",
     },
     {
-      title: "Manage Profile",
-      description: "Update your creator profile",
+      title: "Edit your page",
       icon: UserCircle,
       href: "/dashboard/profile",
-      color: "bg-emerald-500",
     },
     {
-      title: "Settings",
-      description: "Configure your account preferences",
-      icon: Settings,
-      href: "/dashboard/profile",
-      color: "bg-gray-600",
+      title: "View analytics",
+      icon: BarChart3,
+      href: "/dashboard/analytics",
     },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-                Welcome back!
-              </h1>
-              <p className="text-gray-600 text-lg">
-                {user.email?.split('@')[0] || user.email}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Activity className="w-4 h-4" />
-              <span>Last login: Just now</span>
-            </div>
-          </div>
-        </div>
+    <>
+      {showClaimUsername && user && (
+        <ClaimUsernameModal
+          isOpen={showClaimUsername}
+          onComplete={() => {
+            setShowClaimUsername(false);
+            window.location.href = window.location.href;
+          }}
+        />
+      )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {statCards.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <div
-                key={index}
-                className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all duration-200"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.color}`}>
-                    <Icon className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex items-center gap-1 text-sm font-medium text-emerald-600">
-                    <ArrowUp className="w-4 h-4" />
-                    {stat.change}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-gray-600 text-sm font-medium mb-1">{stat.title}</p>
-                  <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      <div className="min-h-screen bg-white dark:bg-black">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 py-12 sm:py-16">
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Quick Actions</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {quickActions.map((action, index) => {
-              const Icon = action.icon;
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-12"
+          >
+            <h1 className="text-4xl sm:text-5xl font-medium text-gray-900 dark:text-white mb-3 tracking-tight">
+              Home
+            </h1>
+            <p className="text-base text-gray-600 dark:text-gray-400">
+              Your creator dashboard
+            </p>
+          </motion.div>
+
+          {/* Primary Metrics */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.05 }}
+            className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"
+          >
+            {primaryMetrics.map((metric, index) => {
+              const Icon = metric.icon;
               return (
                 <a
                   key={index}
-                  href={action.href}
-                  className="group p-6 rounded-xl border-2 border-gray-200 hover:border-indigo-500 hover:shadow-lg transition-all duration-200 flex flex-col items-start gap-3"
+                  href={metric.href}
+                  className="group block bg-white dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-lg p-8 hover:border-gray-900 dark:hover:border-white transition-colors duration-200"
                 >
-                  <div className={`p-3 rounded-lg ${action.color} group-hover:scale-110 transition-transform duration-200`}>
-                    <Icon className="w-6 h-6 text-white" />
+                  <div className="flex items-start justify-between mb-8">
+                    <Icon className="w-5 h-5 text-gray-900 dark:text-white" />
+                    {metric.trend && (
+                      <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+                        <ArrowUpRight className="w-3 h-3" />
+                        {metric.trend}
+                      </div>
+                    )}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors">
-                      {action.title}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {action.description}
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{metric.label}</p>
+                    <p className="text-5xl sm:text-6xl font-medium text-gray-900 dark:text-white mb-2 tracking-tight">
+                      {metric.value}
                     </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-500">{metric.subtext}</p>
+                  </div>
+                  <div className="flex items-center gap-1 mt-6 text-sm text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+                    View details
+                    <ChevronRight className="w-4 h-4" />
                   </div>
                 </a>
               );
             })}
-          </div>
-        </div>
+          </motion.div>
 
-        {/* Recent Activity */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Recent Activity</h2>
-          <div className="text-center py-12">
-            <TrendingUp className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 font-medium">No recent activity</p>
-            <p className="text-sm text-gray-400 mt-2">
-              Your activity will appear here once you start engaging with your community
-            </p>
-          </div>
-        </div>
+          {/* Secondary Metrics */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-16"
+          >
+            {secondaryMetrics.map((metric, index) => {
+              const Icon = metric.icon;
+              return (
+                <a
+                  key={index}
+                  href={metric.href}
+                  className="group block bg-white dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-lg p-6 hover:border-gray-900 dark:hover:border-white transition-colors duration-200"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <Icon className="w-4 h-4 text-gray-400 dark:text-gray-600" />
+                    <span className="text-xs text-gray-600 dark:text-gray-400">{metric.label}</span>
+                  </div>
+                  <p className="text-3xl font-medium text-gray-900 dark:text-white mb-1 tracking-tight">
+                    {metric.value}
+                  </p>
+                </a>
+              );
+            })}
+          </motion.div>
 
-        {/* Getting Started Tips */}
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg p-6 md:p-8 text-white">
-          <h2 className="text-2xl font-bold mb-4">Getting Started</h2>
-          <p className="text-indigo-100 mb-6">
-            Start building your creator community with these essential steps:
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="font-semibold mb-2">1. Complete Your Profile</div>
-              <p className="text-sm text-indigo-100">
-                Add your bio, social links, and profile picture
-              </p>
+          {/* Get Started Section - Only show when no data */}
+          {!hasAnyData && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.15 }}
+              className="mb-16"
+            >
+              <h2 className="text-2xl font-medium text-gray-900 dark:text-white mb-6 tracking-tight">
+                Get started
+              </h2>
+
+              <div className="space-y-3">
+                <a
+                  href="/dashboard/profile"
+                  className="group flex items-start justify-between p-6 bg-white dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-lg hover:border-gray-900 dark:hover:border-white transition-colors duration-200"
+                >
+                  <div className="flex-1">
+                    <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1">
+                      Complete your page
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Add your bio, social links, and profile picture to help supporters connect with you
+                    </p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors flex-shrink-0 ml-4 mt-0.5" />
+                </a>
+
+                <a
+                  href="/dashboard/posts"
+                  className="group flex items-start justify-between p-6 bg-white dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-lg hover:border-gray-900 dark:hover:border-white transition-colors duration-200"
+                >
+                  <div className="flex-1">
+                    <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1">
+                      Share your first post
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Create an update to engage with your community and start building relationships
+                    </p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors flex-shrink-0 ml-4 mt-0.5" />
+                </a>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Quick Actions */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <h2 className="text-2xl font-medium text-gray-900 dark:text-white mb-6 tracking-tight">
+              Quick actions
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {quickActions.map((action, index) => {
+                const Icon = action.icon;
+                return (
+                  <a
+                    key={index}
+                    href={action.href}
+                    className="group flex items-center gap-3 p-5 bg-white dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-lg hover:border-gray-900 dark:hover:border-white transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:outline-none"
+                  >
+                    <Icon className="w-5 h-5 text-gray-900 dark:text-white flex-shrink-0" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {action.title}
+                    </span>
+                  </a>
+                );
+              })}
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="font-semibold mb-2">2. Create Your First Event</div>
-              <p className="text-sm text-indigo-100">
-                Schedule a meetup or workshop for your community
-              </p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="font-semibold mb-2">3. Share Your Profile</div>
-              <p className="text-sm text-indigo-100">
-                Spread the word and grow your follower base
-              </p>
-            </div>
-          </div>
+          </motion.div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

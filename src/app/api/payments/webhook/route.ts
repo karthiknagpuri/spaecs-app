@@ -4,13 +4,40 @@ import { createClient } from "@/lib/supabase/server";
 import { verifyWebhookSignature } from "@/lib/edodwaja/client";
 import { EdodwajaWebhookPayload } from "@/lib/edodwaja/client";
 import { UpdateTransaction, UpdateSupporter, TransactionStatus } from "@/types/payment";
+import { rateLimit, getIdentifier, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
+  // SECURITY: Apply rate limiting for webhooks
+  const identifier = getIdentifier(request);
+  const rateLimitResult = rateLimit(identifier, RATE_LIMITS.webhook);
+
+  if (!rateLimitResult.success) {
+    console.error("Webhook rate limit exceeded:", identifier);
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429 }
+    );
+  }
+
+  const supabase = await createClient();
 
   try {
-    // Parse webhook payload
-    const payload: EdodwajaWebhookPayload = await request.json();
+    // SECURITY: Get raw body BEFORE parsing for signature verification
+    const rawBody = await request.text();
+    let payload: EdodwajaWebhookPayload;
+
+    try {
+      payload = JSON.parse(rawBody);
+    } catch (error) {
+      console.error("Invalid JSON payload");
+      return NextResponse.json({ error: "Invalid payload format" }, { status: 400 });
+    }
+
+    // Validate required fields
+    if (!payload.order_id || !payload.signature) {
+      console.error("Missing required webhook fields");
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
 
     // Get webhook secret from creator payment settings
     const { data: transaction } = await supabase
@@ -35,7 +62,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid configuration" }, { status: 400 });
     }
 
-    // Verify webhook signature
+    // SECURITY: Verify webhook signature using raw body
     const isValid = verifyWebhookSignature(payload, settings.edodwaja_webhook_secret);
 
     if (!isValid) {
@@ -119,9 +146,5 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Disable body parsing to get raw body for signature verification
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Note: Next.js 13+ App Router handles raw body via request.text()
+// No need for bodyParser config

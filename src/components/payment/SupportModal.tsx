@@ -7,17 +7,21 @@ import {
   Heart,
   Coffee,
   Gift,
-  Sparkles,
   CreditCard,
   Calendar,
   ChevronRight,
   Check,
   Zap,
   Trophy,
-  Diamond
+  Diamond,
+  Sparkles,
+  Star,
+  Crown,
+  Flame
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Script from "next/script";
+import Image from "next/image";
 
 interface Creator {
   username: string;
@@ -50,6 +54,7 @@ export function SupportModal({ creator, selectedTierId, onClose }: SupportModalP
   const [customAmount, setCustomAmount] = useState<string>("");
   const [isMonthly, setIsMonthly] = useState(false);
   const [selectedQuickAmount, setSelectedQuickAmount] = useState<number | null>(200);
+  const [showCustomInput, setShowCustomInput] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [selectedTier, setSelectedTier] = useState<string | null>(selectedTierId || null);
@@ -57,12 +62,12 @@ export function SupportModal({ creator, selectedTierId, onClose }: SupportModalP
   const supabase = createClient();
 
   const quickAmounts = [
-    { value: 100, label: "₹100", icon: Coffee },
-    { value: 200, label: "₹200", icon: Heart },
-    { value: 500, label: "₹500", icon: Gift },
-    { value: 1000, label: "₹1000", icon: Sparkles },
-    { value: 2000, label: "₹2000", icon: Trophy },
-    { value: 5000, label: "₹5000", icon: Diamond }
+    { value: 50, label: "₹50", icon: Coffee, description: "Chai & Samosa", badge: null, color: "gray" },
+    { value: 100, label: "₹100", icon: Heart, description: "Support with love", badge: "⭐ Supporter", color: "blue" },
+    { value: 250, label: "₹250", icon: Gift, description: "Movie ticket", badge: "🎯 Contributor", color: "green" },
+    { value: 500, label: "₹500", icon: Sparkles, description: "Special meal", badge: "✨ Champion", color: "purple" },
+    { value: 1000, label: "₹1000", icon: Trophy, description: "Super supporter", badge: "🏆 Hero", color: "orange" },
+    { value: 2000, label: "₹2000", icon: Diamond, description: "Top fan", badge: "👑 Legend", color: "yellow" }
   ];
 
   useEffect(() => {
@@ -80,6 +85,13 @@ export function SupportModal({ creator, selectedTierId, onClose }: SupportModalP
     setAmount(value);
     setSelectedQuickAmount(value);
     setCustomAmount("");
+    setShowCustomInput(false);
+    setSelectedTier(null);
+  };
+
+  const handleCustomAmountClick = () => {
+    setShowCustomInput(true);
+    setSelectedQuickAmount(null);
     setSelectedTier(null);
   };
 
@@ -184,8 +196,12 @@ export function SupportModal({ creator, selectedTierId, onClose }: SupportModalP
         strategy="lazyOnload"
       />
 
-      <AnimatePresence>
-        <div
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="support-modal"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
           onClick={onClose}
         >
@@ -194,17 +210,17 @@ export function SupportModal({ creator, selectedTierId, onClose }: SupportModalP
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-xl"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
 
           {/* Modal */}
           <motion.div
-            initial={{ y: "100%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "100%", opacity: 0 }}
+            initial={{ y: "100%", opacity: 0, scale: 0.95 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: "100%", opacity: 0, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full sm:max-w-lg bg-white dark:bg-neutral-900 rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden"
+            className="relative w-full sm:max-w-lg max-h-[90vh] bg-white dark:bg-neutral-900 rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden"
           >
             {/* Header */}
             <div className="relative p-6 pb-4 border-b border-gray-100 dark:border-neutral-800">
@@ -216,8 +232,20 @@ export function SupportModal({ creator, selectedTierId, onClose }: SupportModalP
               </button>
 
               <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-600 flex items-center justify-center text-white font-bold">
-                  {creator.display_name.slice(0, 2).toUpperCase()}
+                <div className="h-12 w-12 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-neutral-800">
+                  {creator.avatar_url ? (
+                    <Image
+                      src={creator.avatar_url}
+                      alt={creator.display_name}
+                      width={48}
+                      height={48}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-purple-600 flex items-center justify-center text-white font-bold">
+                      {creator.display_name.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -231,7 +259,7 @@ export function SupportModal({ creator, selectedTierId, onClose }: SupportModalP
             </div>
 
             {/* Content */}
-            <div className="p-6 max-h-[60vh] overflow-y-auto">
+            <div className="p-6 max-h-[calc(90vh-200px)] overflow-y-auto">
               {/* Support Type Toggle */}
               <div className="flex bg-gray-100 dark:bg-neutral-800 rounded-xl p-1 mb-6">
                 <button
@@ -271,7 +299,7 @@ export function SupportModal({ creator, selectedTierId, onClose }: SupportModalP
                         onClick={() => handleTierSelect(tier.id)}
                         className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                           selectedTier === tier.id
-                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30'
                             : 'border-gray-200 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'
                         }`}
                       >
@@ -283,15 +311,9 @@ export function SupportModal({ creator, selectedTierId, onClose }: SupportModalP
                             ₹{tier.price}/mo
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
                           {tier.description}
                         </p>
-                        <div className="flex items-center gap-2">
-                          <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <span className="text-xs text-gray-700 dark:text-gray-300">
-                            {tier.benefits.slice(0, 2).join(' • ')}
-                          </span>
-                        </div>
                       </motion.button>
                     ))}
                   </div>
@@ -304,53 +326,88 @@ export function SupportModal({ creator, selectedTierId, onClose }: SupportModalP
                   Quick Amount
                 </h3>
                 <div className="grid grid-cols-3 gap-3">
-                  {quickAmounts.map(({ value, label, icon: Icon }) => (
+                  {quickAmounts.map(({ value, label, icon: Icon, description, badge, color }) => (
                     <motion.button
                       key={value}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => handleQuickAmountSelect(value)}
-                      className={`relative p-3 rounded-xl border-2 transition-all ${
+                      className={`relative p-3 pt-4 rounded-xl border-2 transition-all ${
                         selectedQuickAmount === value
-                          ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30'
                           : 'border-gray-200 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'
                       }`}
                     >
-                      <Icon className={`h-5 w-5 mb-1 mx-auto ${
+                      {badge && (
+                        <div className="absolute top-1 left-1 right-1 bg-purple-600 dark:bg-purple-500 text-white text-[8px] px-1.5 py-0.5 rounded-md font-medium text-center">
+                          {badge}
+                        </div>
+                      )}
+                      <Icon className={`h-5 w-5 mb-1 mx-auto mt-2 ${
                         selectedQuickAmount === value
-                          ? 'text-indigo-600 dark:text-indigo-400'
+                          ? 'text-purple-600 dark:text-purple-400'
                           : 'text-gray-600 dark:text-gray-400'
                       }`} />
-                      <span className={`text-sm font-medium ${
+                      <span className={`text-sm font-medium block ${
                         selectedQuickAmount === value
-                          ? 'text-indigo-600 dark:text-indigo-400'
+                          ? 'text-purple-600 dark:text-purple-400'
                           : 'text-gray-700 dark:text-gray-300'
                       }`}>
                         {label}
+                      </span>
+                      <span className={`text-[10px] block mt-0.5 ${
+                        selectedQuickAmount === value
+                          ? 'text-purple-500 dark:text-purple-500'
+                          : 'text-gray-500 dark:text-gray-500'
+                      }`}>
+                        {description}
                       </span>
                     </motion.button>
                   ))}
                 </div>
               </div>
 
-              {/* Custom Amount */}
+              {/* Custom Amount Button */}
               <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Custom Amount
-                </h3>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 dark:text-gray-400">
-                    ₹
-                  </span>
-                  <input
-                    type="number"
-                    value={customAmount}
-                    onChange={(e) => handleCustomAmountChange(e.target.value)}
-                    placeholder="Enter amount"
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-white"
-                    min="1"
-                  />
-                </div>
+                {!showCustomInput ? (
+                  <motion.button
+                    onClick={handleCustomAmountClick}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full p-4 rounded-xl border-2 border-dashed border-gray-300 dark:border-neutral-600 hover:border-purple-500 dark:hover:border-purple-500 transition-all text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400"
+                  >
+                    <CreditCard className="h-5 w-5 mb-1 mx-auto" />
+                    <span className="text-sm font-medium">Custom Amount</span>
+                  </motion.button>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Custom Amount
+                      </h3>
+                      <button
+                        onClick={() => setShowCustomInput(false)}
+                        className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 dark:text-gray-400">
+                        ₹
+                      </span>
+                      <input
+                        type="number"
+                        value={customAmount}
+                        onChange={(e) => handleCustomAmountChange(e.target.value)}
+                        placeholder="Enter amount (min ₹100)"
+                        className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-white"
+                        min="100"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Message */}
@@ -366,6 +423,29 @@ export function SupportModal({ creator, selectedTierId, onClose }: SupportModalP
                   rows={3}
                 />
               </div>
+
+              {/* Achievement Preview */}
+              {selectedQuickAmount && selectedQuickAmount >= 100 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-2xl border border-purple-200 dark:border-purple-800/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="text-3xl">
+                      {quickAmounts.find(a => a.value === selectedQuickAmount)?.badge?.split(' ')[0] || '⭐'}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                        You'll earn: {quickAmounts.find(a => a.value === selectedQuickAmount)?.badge || 'Supporter Badge'}
+                      </p>
+                      <p className="text-xs text-purple-700 dark:text-purple-300">
+                        Your support makes a real difference! 🙏
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
 
               {/* Summary */}
               <div className="bg-gray-50 dark:bg-neutral-800 rounded-xl p-4">
@@ -397,7 +477,7 @@ export function SupportModal({ creator, selectedTierId, onClose }: SupportModalP
                 whileTap={{ scale: 0.98 }}
                 onClick={initiatePayment}
                 disabled={loading || amount < 1}
-                className="w-full py-3.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:bg-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -414,7 +494,7 @@ export function SupportModal({ creator, selectedTierId, onClose }: SupportModalP
               </p>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       </AnimatePresence>
     </>
   );

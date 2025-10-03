@@ -62,32 +62,9 @@ export async function GET(request: Request) {
       return NextResponse.redirect(errorUrl.toString());
     }
 
-    // Successfully authenticated, now check user profile
-    try {
-      const { data: profile, error: profileError } = await supabase
-        .from('creator_pages')
-        .select('slug')
-        .eq('user_id', user.id)
-        .maybeSingle(); // Use maybeSingle() to avoid error on no rows
-
-      if (profileError) {
-        console.error('Profile lookup error:', profileError);
-        // Don't fail auth, just send to onboarding
-        return NextResponse.redirect(`${origin}/onboarding`);
-      }
-
-      if (profile && profile.slug) {
-        // Existing user with profile, redirect to dashboard
-        return NextResponse.redirect(`${origin}/dashboard`);
-      } else {
-        // New user or user without profile, redirect to onboarding
-        return NextResponse.redirect(`${origin}/onboarding`);
-      }
-    } catch (profileError) {
-      // Profile check failed, but auth succeeded - send to onboarding
-      console.error('Profile check exception:', profileError);
-      return NextResponse.redirect(`${origin}/onboarding`);
-    }
+    // Successfully authenticated - always redirect to dashboard
+    // Dashboard will handle username collection if needed
+    return NextResponse.redirect(`${origin}/dashboard`);
   } catch (error) {
     // Unexpected error during authentication process
     console.error('Unexpected auth callback error:', error);

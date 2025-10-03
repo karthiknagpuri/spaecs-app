@@ -23,9 +23,18 @@ Object.defineProperty(window, 'location', {
   writable: true,
 });
 
+interface MockSupabase {
+  auth: {
+    signInWithOAuth: jest.Mock;
+    getUser: jest.Mock;
+    getSession: jest.Mock;
+    onAuthStateChange: jest.Mock;
+  };
+}
+
 describe('Google OAuth Integration Tests', () => {
   const mockOnClose = jest.fn();
-  let mockSupabase: any;
+  let mockSupabase: MockSupabase;
 
   beforeEach(() => {
     jest.clearAllMocks();

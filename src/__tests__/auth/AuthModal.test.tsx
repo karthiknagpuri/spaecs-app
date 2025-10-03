@@ -9,17 +9,19 @@ jest.mock('@/lib/supabase/client', () => ({
   createClient: jest.fn()
 }));
 
-// Mock window.location
-delete (global as any).window;
-(global as any).window = {
-  location: { href: '/', origin: 'http://localhost:3000', reload: jest.fn() }
-};
-
 describe('AuthModal', () => {
   const mockOnClose = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Mock window.location for each test
+    delete (window as any).location;
+    (window as any).location = {
+      href: 'http://localhost:3000',
+      origin: 'http://localhost:3000',
+      reload: jest.fn()
+    };
     (createClient as jest.Mock).mockReturnValue({
       auth: {
         signInWithOAuth: jest.fn(),
@@ -41,7 +43,7 @@ describe('AuthModal', () => {
 
     it('should display close button', () => {
       render(<AuthModal isOpen={true} onClose={mockOnClose} />);
-      const closeButton = screen.getByLabelText('Close');
+      const closeButton = screen.getByLabelText('Close authentication modal');
       expect(closeButton).toBeInTheDocument();
     });
 
@@ -170,7 +172,7 @@ describe('AuthModal', () => {
     it('should close modal when close button is clicked', async () => {
       render(<AuthModal isOpen={true} onClose={mockOnClose} />);
 
-      const closeButton = screen.getByLabelText('Close');
+      const closeButton = screen.getByLabelText('Close authentication modal');
       await userEvent.click(closeButton);
 
       expect(mockOnClose).toHaveBeenCalled();
@@ -250,14 +252,23 @@ describe('AuthModal', () => {
     it('should have proper ARIA labels', () => {
       render(<AuthModal isOpen={true} onClose={mockOnClose} />);
 
-      const closeButton = screen.getByLabelText('Close');
+      const closeButton = screen.getByLabelText('Close authentication modal');
       expect(closeButton).toBeInTheDocument();
+    });
+
+    it('should have proper ARIA attributes on modal', () => {
+      render(<AuthModal isOpen={true} onClose={mockOnClose} />);
+
+      const modal = screen.getByRole('dialog');
+      expect(modal).toHaveAttribute('aria-modal', 'true');
+      expect(modal).toHaveAttribute('aria-labelledby', 'modal-title');
+      expect(modal).toHaveAttribute('aria-describedby', 'modal-description');
     });
 
     it('should have minimum touch target size for mobile', () => {
       render(<AuthModal isOpen={true} onClose={mockOnClose} />);
 
-      const closeButton = screen.getByLabelText('Close');
+      const closeButton = screen.getByLabelText('Close authentication modal');
       expect(closeButton).toHaveClass('min-h-[44px]');
       expect(closeButton).toHaveClass('min-w-[44px]');
     });
@@ -265,7 +276,7 @@ describe('AuthModal', () => {
     it('should support keyboard navigation', async () => {
       render(<AuthModal isOpen={true} onClose={mockOnClose} />);
 
-      const closeButton = screen.getByLabelText('Close');
+      const closeButton = screen.getByLabelText('Close authentication modal');
       closeButton.focus();
 
       expect(document.activeElement).toBe(closeButton);
