@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import Razorpay from "razorpay";
+import { getRazorpay } from "@/lib/razorpay/client";
 import { rateLimit, getIdentifier, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 import { verifyCSRF } from "@/lib/middleware/csrf";
-
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,6 +63,7 @@ export async function POST(request: NextRequest) {
     const { amount, currency, creator_id, is_monthly, tier_id, message } = validation.data;
 
     // Create Razorpay order
+    const razorpay = getRazorpay();
     const razorpayOrder = await razorpay.orders.create({
       amount: amount * 100, // Amount in paise
       currency,
