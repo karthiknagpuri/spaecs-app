@@ -11,7 +11,10 @@ import {
   TrendingUp,
   UserCircle,
   Heart,
-  FileText
+  FileText,
+  Mail,
+  Zap,
+  Gift
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -98,6 +101,27 @@ export default function DashboardLayout({
       href: "/dashboard/supporters",
       icon: (
         <Heart className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+      ),
+    },
+    {
+      label: "Email Leads",
+      href: "/dashboard/leads",
+      icon: (
+        <Mail className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+      ),
+    },
+    {
+      label: "Autopilot",
+      href: "/dashboard/autopilot",
+      icon: (
+        <Zap className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+      ),
+    },
+    {
+      label: "Benefits",
+      href: "/dashboard/benefits",
+      icon: (
+        <Gift className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
     },
     {
