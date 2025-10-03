@@ -33,8 +33,17 @@ import CollabModal from "@/components/profile/CollabModal";
 import BrandLogos from "@/components/profile/BrandLogos";
 import CreatorStats from "@/components/profile/CreatorStats";
 import PublicBlockRenderer from "@/components/profile/PublicBlockRenderer";
+import { ThemeWrapper } from "@/components/profile/ThemeWrapper";
 import { CustomTab, CustomBlock } from "@/types/blocks";
 import Image from "next/image";
+
+interface ThemeConfig {
+  template: 'minimal' | 'luma' | 'dark' | 'gradient' | 'brutalist' | 'glass';
+  colors: {
+    primary: string;
+    accent: string;
+  };
+}
 
 interface CustomLink {
   id: string;
@@ -77,6 +86,7 @@ interface CreatorProfile {
     benefits: string[];
   }[];
   total_supporters?: number;
+  theme_config?: ThemeConfig;
 }
 
 interface Post {
@@ -236,8 +246,14 @@ export default function CreatorProfilePage() {
     );
   }
 
+  // Get theme or use default
+  const theme = profile.theme_config || {
+    template: 'minimal',
+    colors: { primary: '#000000', accent: '#f5f5f5' }
+  };
+
   return (
-    <>
+    <ThemeWrapper theme={theme}>
       <div className="min-h-screen bg-white dark:bg-neutral-950">
         {/* Twitter-style Profile Layout */}
         <div className="max-w-3xl mx-auto">
@@ -858,6 +874,6 @@ export default function CreatorProfilePage() {
           creatorId={profile.user_id}
         />
       )}
-    </>
+    </ThemeWrapper>
   );
 }
