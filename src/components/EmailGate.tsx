@@ -4,13 +4,13 @@ import { useState } from "react";
 import { Mail, Loader2, CheckCircle } from "lucide-react";
 
 interface EmailGateProps {
-  creatorId: string;
+  userId: string;
   message?: string;
   onSubmit: (email: string) => Promise<void>;
   source: 'linktree' | 'newsletter' | 'community';
 }
 
-export default function EmailGate({ creatorId, message, onSubmit, source }: EmailGateProps) {
+export default function EmailGate({ userId, message, onSubmit, source }: EmailGateProps) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,7 +36,7 @@ export default function EmailGate({ creatorId, message, onSubmit, source }: Emai
 
       // Store in localStorage to prevent re-asking
       const storedEmails = JSON.parse(localStorage.getItem('submitted_emails') || '{}');
-      storedEmails[`${creatorId}_${source}`] = email;
+      storedEmails[`${userId}_${source}`] = email;
       localStorage.setItem('submitted_emails', JSON.stringify(storedEmails));
     } catch (err: any) {
       setError(err.message || "Failed to submit. Please try again.");

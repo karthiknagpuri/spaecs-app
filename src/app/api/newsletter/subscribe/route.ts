@@ -4,9 +4,9 @@ import { createClient } from '@/lib/supabase/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { creator_id, email, name, tags = [] } = body;
+    const { user_id, email, name, tags = [] } = body;
 
-    if (!creator_id || !email) {
+    if (!user_id || !email) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('newsletter_subscribers')
       .upsert({
-        creator_id,
+        user_id,
         email: email.toLowerCase(),
         name,
         tags,
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
         unsubscribed_at: null,
         updated_at: new Date().toISOString()
       }, {
-        onConflict: 'creator_id,email',
+        onConflict: 'user_id,email',
         ignoreDuplicates: false
       })
       .select()
@@ -55,14 +55,14 @@ export async function POST(request: NextRequest) {
     await supabase
       .from('email_leads')
       .upsert({
-        creator_id,
+        user_id,
         email: email.toLowerCase(),
         source: 'newsletter',
         metadata: { name, tags },
         status: 'active',
         updated_at: new Date().toISOString()
       }, {
-        onConflict: 'creator_id,email,source',
+        onConflict: 'user_id,email,source',
         ignoreDuplicates: true
       });
 
@@ -79,9 +79,9 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json();
-    const { creator_id, email } = body;
+    const { user_id, email } = body;
 
-    if (!creator_id || !email) {
+    if (!user_id || !email) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -98,7 +98,7 @@ export async function DELETE(request: NextRequest) {
         unsubscribed_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
-      .eq('creator_id', creator_id)
+      .eq('user_id', user_id)
       .eq('email', email.toLowerCase());
 
     if (error) {
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from('newsletter_subscribers')
       .select('*')
-      .eq('creator_id', user.id)
+      .eq('user_id', user.id)
       .eq('status', status)
       .order('subscribed_at', { ascending: false });
 

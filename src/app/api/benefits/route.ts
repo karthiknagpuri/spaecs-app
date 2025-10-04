@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('member_benefits')
       .select('*')
-      .eq('creator_id', user.id)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (tier_id && tier_id !== 'all') {
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('member_benefits')
       .insert({
-        creator_id: user.id,
+        user_id: user.id,
         tier_id,
         benefit_type,
         name,

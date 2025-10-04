@@ -22,11 +22,11 @@ export async function PATCH(
     // Verify ownership
     const { data: benefit } = await supabase
       .from('member_benefits')
-      .select('creator_id')
+      .select('user_id')
       .eq('id', benefitId)
       .single();
 
-    if (!benefit || benefit.creator_id !== user.id) {
+    if (!benefit || benefit.user_id !== user.id) {
       return NextResponse.json(
         { error: 'Benefit not found or unauthorized' },
         { status: 404 }
@@ -40,7 +40,7 @@ export async function PATCH(
         updated_at: new Date().toISOString()
       })
       .eq('id', benefitId)
-      .eq('creator_id', user.id)
+      .eq('user_id', user.id)
       .select()
       .single();
 
@@ -83,7 +83,7 @@ export async function DELETE(
       .from('member_benefits')
       .delete()
       .eq('id', benefitId)
-      .eq('creator_id', user.id);
+      .eq('user_id', user.id);
 
     if (error) {
       console.error('Error deleting benefit:', error);

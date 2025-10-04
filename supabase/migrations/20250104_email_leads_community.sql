@@ -1,20 +1,20 @@
 -- Email leads collection table
 CREATE TABLE IF NOT EXISTS email_leads (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   source TEXT NOT NULL, -- 'linktree', 'newsletter', 'community'
   metadata JSONB DEFAULT '{}', -- additional data like link clicked, referrer, etc.
   status TEXT DEFAULT 'active', -- 'active', 'unsubscribed', 'bounced'
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(creator_id, email, source)
+  UNIQUE(user_id, email, source)
 );
 
 -- Newsletter subscribers table
 CREATE TABLE IF NOT EXISTS newsletter_subscribers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   name TEXT,
   status TEXT DEFAULT 'subscribed', -- 'subscribed', 'unsubscribed', 'bounced'
@@ -25,14 +25,14 @@ CREATE TABLE IF NOT EXISTS newsletter_subscribers (
   last_sent_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(creator_id, email)
+  UNIQUE(user_id, email)
 );
 
 -- Community members table
 CREATE TABLE IF NOT EXISTS community_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  creator_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  member_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   name TEXT,
   access_level TEXT NOT NULL, -- 'free', 'paid', 'tier_1', 'tier_2', 'tier_3', etc.
@@ -42,13 +42,13 @@ CREATE TABLE IF NOT EXISTS community_members (
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(creator_id, email)
+  UNIQUE(creator_user_id, email)
 );
 
 -- Autopilot campaigns table
 CREATE TABLE IF NOT EXISTS autopilot_campaigns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   type TEXT NOT NULL, -- 'upgrade_offer', 'teaser', 'retention', 'annual_offer'
   name TEXT NOT NULL,
   description TEXT,
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS autopilot_campaigns (
 -- Member benefits table
 CREATE TABLE IF NOT EXISTS member_benefits (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   tier_id TEXT NOT NULL, -- 'tier_1', 'tier_2', 'tier_3', or 'all'
   benefit_type TEXT NOT NULL, -- 'merch', 'shoutout', 'call', 'archive', 'community', 'downloads', 'tickets', 'ebook', 'early_access', 'vip', 'exclusive_content', 'fan_requests'
   name TEXT NOT NULL,
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS member_benefits (
 -- Link analytics for email collection
 CREATE TABLE IF NOT EXISTS link_analytics (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   link_id TEXT NOT NULL, -- identifier for the link
   email_collected TEXT, -- email if collected
   clicked_at TIMESTAMPTZ DEFAULT NOW(),
@@ -100,27 +100,27 @@ ADD COLUMN IF NOT EXISTS community_access_level TEXT DEFAULT 'all', -- 'all', 'm
 ADD COLUMN IF NOT EXISTS autopilot_enabled BOOLEAN DEFAULT false;
 
 -- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_email_leads_creator ON email_leads(creator_id);
+CREATE INDEX IF NOT EXISTS idx_email_leads_creator ON email_leads(user_id);
 CREATE INDEX IF NOT EXISTS idx_email_leads_email ON email_leads(email);
 CREATE INDEX IF NOT EXISTS idx_email_leads_source ON email_leads(source);
 CREATE INDEX IF NOT EXISTS idx_email_leads_created ON email_leads(created_at DESC);
 
-CREATE INDEX IF NOT EXISTS idx_newsletter_creator ON newsletter_subscribers(creator_id);
+CREATE INDEX IF NOT EXISTS idx_newsletter_creator ON newsletter_subscribers(user_id);
 CREATE INDEX IF NOT EXISTS idx_newsletter_email ON newsletter_subscribers(email);
 CREATE INDEX IF NOT EXISTS idx_newsletter_status ON newsletter_subscribers(status);
 
-CREATE INDEX IF NOT EXISTS idx_community_creator ON community_members(creator_id);
-CREATE INDEX IF NOT EXISTS idx_community_user ON community_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_community_creator ON community_members(creator_user_id);
+CREATE INDEX IF NOT EXISTS idx_community_member ON community_members(member_user_id);
 CREATE INDEX IF NOT EXISTS idx_community_access ON community_members(access_level);
 
-CREATE INDEX IF NOT EXISTS idx_campaigns_creator ON autopilot_campaigns(creator_id);
+CREATE INDEX IF NOT EXISTS idx_campaigns_creator ON autopilot_campaigns(user_id);
 CREATE INDEX IF NOT EXISTS idx_campaigns_status ON autopilot_campaigns(status);
 CREATE INDEX IF NOT EXISTS idx_campaigns_type ON autopilot_campaigns(type);
 
-CREATE INDEX IF NOT EXISTS idx_benefits_creator ON member_benefits(creator_id);
+CREATE INDEX IF NOT EXISTS idx_benefits_creator ON member_benefits(user_id);
 CREATE INDEX IF NOT EXISTS idx_benefits_tier ON member_benefits(tier_id);
 
-CREATE INDEX IF NOT EXISTS idx_analytics_creator ON link_analytics(creator_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_creator ON link_analytics(user_id);
 CREATE INDEX IF NOT EXISTS idx_analytics_clicked ON link_analytics(clicked_at DESC);
 
 -- RLS Policies
@@ -134,7 +134,7 @@ ALTER TABLE link_analytics ENABLE ROW LEVEL SECURITY;
 -- Email leads policies
 CREATE POLICY "Creators can view their email leads"
   ON email_leads FOR SELECT
-  USING (auth.uid() = creator_id);
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Anyone can insert email leads"
   ON email_leads FOR INSERT
@@ -142,12 +142,12 @@ CREATE POLICY "Anyone can insert email leads"
 
 CREATE POLICY "Creators can update their email leads"
   ON email_leads FOR UPDATE
-  USING (auth.uid() = creator_id);
+  USING (auth.uid() = user_id);
 
 -- Newsletter subscribers policies
 CREATE POLICY "Creators can view their subscribers"
   ON newsletter_subscribers FOR SELECT
-  USING (auth.uid() = creator_id);
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Anyone can subscribe"
   ON newsletter_subscribers FOR INSERT
@@ -160,7 +160,7 @@ CREATE POLICY "Anyone can unsubscribe"
 -- Community members policies
 CREATE POLICY "Creators can view their community"
   ON community_members FOR SELECT
-  USING (auth.uid() = creator_id OR auth.uid() = user_id);
+  USING (auth.uid() = creator_user_id OR auth.uid() = member_user_id);
 
 CREATE POLICY "Anyone can join community"
   ON community_members FOR INSERT
@@ -168,17 +168,17 @@ CREATE POLICY "Anyone can join community"
 
 CREATE POLICY "Creators can update community members"
   ON community_members FOR UPDATE
-  USING (auth.uid() = creator_id);
+  USING (auth.uid() = creator_user_id);
 
 -- Autopilot campaigns policies
 CREATE POLICY "Creators can manage their campaigns"
   ON autopilot_campaigns FOR ALL
-  USING (auth.uid() = creator_id);
+  USING (auth.uid() = user_id);
 
 -- Member benefits policies
 CREATE POLICY "Creators can manage their benefits"
   ON member_benefits FOR ALL
-  USING (auth.uid() = creator_id);
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Anyone can view enabled benefits"
   ON member_benefits FOR SELECT
@@ -187,7 +187,7 @@ CREATE POLICY "Anyone can view enabled benefits"
 -- Link analytics policies
 CREATE POLICY "Creators can view their analytics"
   ON link_analytics FOR SELECT
-  USING (auth.uid() = creator_id);
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Anyone can insert analytics"
   ON link_analytics FOR INSERT

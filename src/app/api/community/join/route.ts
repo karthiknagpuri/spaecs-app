@@ -4,9 +4,9 @@ import { createClient } from '@/lib/supabase/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { creator_id, email, name, access_level = 'free' } = body;
+    const { user_id, email, name, access_level = 'free' } = body;
 
-    if (!creator_id || !email) {
+    if (!user_id || !email) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const { data: creatorProfile } = await supabase
       .from('creator_pages')
       .select('community_enabled, community_access_level')
-      .eq('user_id', creator_id)
+      .eq('user_id', user_id)
       .single();
 
     if (!creatorProfile?.community_enabled) {
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('community_members')
       .upsert({
-        creator_id,
+        user_id,
         user_id: user?.id || null,
         email: email.toLowerCase(),
         name,
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         last_active_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }, {
-        onConflict: 'creator_id,email',
+        onConflict: 'user_id,email',
         ignoreDuplicates: false
       })
       .select()
@@ -86,14 +86,14 @@ export async function POST(request: NextRequest) {
     await supabase
       .from('email_leads')
       .upsert({
-        creator_id,
+        user_id,
         email: email.toLowerCase(),
         source: 'community',
         metadata: { name, access_level },
         status: 'active',
         updated_at: new Date().toISOString()
       }, {
-        onConflict: 'creator_id,email,source',
+        onConflict: 'user_id,email,source',
         ignoreDuplicates: true
       });
 
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('community_members')
       .select('*')
-      .eq('creator_id', user.id)
+      .eq('user_id', user.id)
       .eq('status', status)
       .order('joined_at', { ascending: false });
 
