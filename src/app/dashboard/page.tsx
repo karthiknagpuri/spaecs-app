@@ -17,7 +17,6 @@ import {
   Eye,
   ChevronRight,
 } from "lucide-react";
-import { ClaimUsernameModal } from "@/components/dashboard/ClaimUsernameModal";
 import { motion } from "framer-motion";
 
 interface DashboardStats {
@@ -39,7 +38,6 @@ export default function DashboardPage() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showClaimUsername, setShowClaimUsername] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -59,24 +57,6 @@ export default function DashboardPage() {
 
         if (!mounted) return;
         setUser(user);
-
-        const hasClaimedUsername = localStorage.getItem(`username_claimed_${user.id}`);
-        const { data: profile } = await supabase
-          .from('creator_pages')
-          .select('slug')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (!mounted) return;
-
-        if ((!profile || !profile.slug) && !hasClaimedUsername) {
-          setShowClaimUsername(true);
-        } else {
-          setShowClaimUsername(false);
-          if (profile && profile.slug) {
-            localStorage.setItem(`username_claimed_${user.id}`, 'true');
-          }
-        }
 
         // TODO: Load real stats from database
         setStats({
@@ -200,18 +180,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <>
-      {showClaimUsername && user && (
-        <ClaimUsernameModal
-          isOpen={showClaimUsername}
-          onComplete={() => {
-            setShowClaimUsername(false);
-            window.location.href = window.location.href;
-          }}
-        />
-      )}
-
-      <div className="min-h-screen bg-white dark:bg-black">
+    <div className="min-h-screen bg-white dark:bg-black">
         <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 py-12 sm:py-16">
 
           {/* Header */}
@@ -371,6 +340,5 @@ export default function DashboardPage() {
           </motion.div>
         </div>
       </div>
-    </>
   );
 }

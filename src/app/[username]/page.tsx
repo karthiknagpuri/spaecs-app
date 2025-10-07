@@ -34,6 +34,7 @@ import BrandLogos from "@/components/profile/BrandLogos";
 import CreatorStats from "@/components/profile/CreatorStats";
 import PublicBlockRenderer from "@/components/profile/PublicBlockRenderer";
 import { ThemeWrapper } from "@/components/profile/ThemeWrapper";
+import { EmailGateModal } from "@/components/EmailGateModal";
 import { CustomTab, CustomBlock } from "@/types/blocks";
 import Image from "next/image";
 
@@ -57,6 +58,7 @@ interface CustomLink {
   show_click_count?: boolean;
   click_count?: number;
   display_order?: number;
+  require_email?: boolean;
 }
 
 interface CreatorProfile {
@@ -135,6 +137,8 @@ export default function CreatorProfilePage() {
   const [creatorStats, setCreatorStats] = useState<any>(null);
   const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
   const [customBlocks, setCustomBlocks] = useState<Record<string, CustomBlock[]>>({});
+  const [showEmailGate, setShowEmailGate] = useState(false);
+  const [selectedLink, setSelectedLink] = useState<CustomLink | null>(null);
 
   // Sticky CTA on scroll
   useEffect(() => {
@@ -668,25 +672,37 @@ export default function CreatorProfilePage() {
                 {/* Custom Links Grid */}
                 <div className="space-y-3">
                   {filteredLinks.length > 0 ? (
-                    filteredLinks.map((link) => (
-                      <a
-                        key={link.id}
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => {
+                    filteredLinks.map((link) => {
+                      const hasProvidedEmail = typeof window !== 'undefined' && localStorage.getItem(`email_gate_${link.id}`);
+                      const requiresEmail = link.require_email && !hasProvidedEmail;
+
+                      const handleLinkClick = (e: React.MouseEvent) => {
+                        if (requiresEmail) {
+                          e.preventDefault();
+                          setSelectedLink(link);
+                          setShowEmailGate(true);
+                        } else {
                           // Track click
                           fetch(`/api/custom-links/${link.id}/click`, {
                             method: 'POST'
                           }).catch(err => console.error('Failed to track click:', err));
-                        }}
-                        className={`flex items-center justify-between p-4 rounded-xl transition-all group ${
-                          link.is_featured
-                            ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:opacity-90'
-                            : 'bg-gray-50 dark:bg-neutral-800 hover:bg-gray-100 dark:hover:bg-neutral-700'
-                        }`}
-                        style={link.button_color ? { backgroundColor: link.button_color } : undefined}
-                      >
+                        }
+                      };
+
+                      return (
+                        <a
+                          key={link.id}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={handleLinkClick}
+                          className={`flex items-center justify-between p-4 rounded-xl transition-all group cursor-pointer ${
+                            link.is_featured
+                              ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:opacity-90'
+                              : 'bg-gray-50 dark:bg-neutral-800 hover:bg-gray-100 dark:hover:bg-neutral-700'
+                          }`}
+                          style={link.button_color ? { backgroundColor: link.button_color } : undefined}
+                        >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           {link.icon && (
                             <span className="text-xl flex-shrink-0">{link.icon}</span>
@@ -722,6 +738,14 @@ export default function CreatorProfilePage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3 flex-shrink-0">
+                          {requiresEmail && (
+                            <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-full">
+                              <Lock className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                              <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                                Email Required
+                              </span>
+                            </div>
+                          )}
                           {link.show_click_count && link.click_count !== undefined && (
                             <span className={`text-xs ${
                               link.is_featured
@@ -731,14 +755,24 @@ export default function CreatorProfilePage() {
                               {link.click_count.toLocaleString()} clicks
                             </span>
                           )}
-                          <ExternalLink className={`h-4 w-4 transition-colors ${
-                            link.is_featured
-                              ? 'text-white dark:text-gray-900 group-hover:opacity-80'
-                              : 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200'
-                          }`} />
+                          {requiresEmail ? (
+                            <Lock className={`h-4 w-4 transition-colors ${
+                              link.is_featured
+                                ? 'text-white dark:text-gray-900'
+                                : 'text-purple-600 dark:text-purple-400'
+                            }`} />
+                          ) : (
+                            <ExternalLink className={`h-4 w-4 transition-colors ${
+                              link.is_featured
+                                ? 'text-white dark:text-gray-900 group-hover:opacity-80'
+                                : 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200'
+                            }`} />
+                          )}
                         </div>
                       </a>
-                    ))
+                      );
+                    })
+                    )
                   ) : searchQuery ? (
                     <div className="text-center py-12">
                       <Search className="h-12 w-12 text-gray-300 dark:text-gray-700 mx-auto mb-3" />
@@ -872,6 +906,29 @@ export default function CreatorProfilePage() {
           onClose={() => setShowCollabModal(false)}
           creatorName={profile.title}
           creatorId={profile.user_id}
+        />
+      )}
+
+      {/* Email Gate Modal */}
+      {showEmailGate && selectedLink && (
+        <EmailGateModal
+          isOpen={showEmailGate}
+          onClose={() => {
+            setShowEmailGate(false);
+            setSelectedLink(null);
+          }}
+          onSuccess={() => {
+            setShowEmailGate(false);
+            // Track click after email is collected
+            fetch(`/api/custom-links/${selectedLink.id}/click`, {
+              method: 'POST'
+            }).catch(err => console.error('Failed to track click:', err));
+          }}
+          linkTitle={selectedLink.title}
+          linkUrl={selectedLink.url}
+          linkId={selectedLink.id}
+          creatorId={profile.user_id}
+          creatorName={profile.title}
         />
       )}
     </ThemeWrapper>

@@ -4,9 +4,9 @@ import { createClient } from '@/lib/supabase/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { user_id, email, source, metadata = {} } = body;
+    const { creator_id, email, source, metadata = {} } = body;
 
-    if (!user_id || !email || !source) {
+    if (!creator_id || !email || !source) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -28,14 +28,14 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('email_leads')
       .upsert({
-        user_id,
+        creator_id,
         email: email.toLowerCase(),
         source,
         metadata,
         status: 'active',
         updated_at: new Date().toISOString()
       }, {
-        onConflict: 'user_id,email,source',
+        onConflict: 'creator_id,email,source',
         ignoreDuplicates: false
       })
       .select()
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('email_leads')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('creator_id', user.id)
       .order('created_at', { ascending: false });
 
     if (source) {

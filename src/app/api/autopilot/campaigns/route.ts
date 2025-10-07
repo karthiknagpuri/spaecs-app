@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('autopilot_campaigns')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('creator_id', user.id)
       .order('created_at', { ascending: false });
 
     if (status) {
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('autopilot_campaigns')
       .insert({
-        user_id: user.id,
+        creator_id: user.id,
         type,
         name,
         description,
